@@ -1,0 +1,79 @@
+<html>
+  <body>
+    <a id="download">Download</a>
+    <button id="stop">Stop</button>
+
+    <script>
+      var socketclient = new WebSocket("ws://localhost:8081/");
+      // Setting binaryType to accept received binary as either 'blob' or 'arraybuffer'
+      socketclient.binaryType = "blob";
+
+      socketclient.onerror = function() {
+        console.log("Connection Error");
+      };
+
+      socketclient.onopen = function() {
+        console.log("WebSocket Client Connected");
+      };
+
+      socketclient.onclose = function() {
+        console.log("echo-protocol socketclient Closed");
+      };
+
+      let shouldStop = false;
+      let stopped = false;
+      const stopButton = document.getElementById("stop");
+
+      stopButton.addEventListener("click", function() {
+        shouldStop = true;
+      });
+
+      const handleSuccess = function(stream) {
+        const options = {
+          mimeType: "audio/webm",
+          audioBitsPerSecond: 32000 //32000 for speech alone is good quality, saves data. max possible is 128000
+        };
+        const recordedChunks = [];
+        const mediaRecorder = new MediaRecorder(stream, options);
+        mediaRecorder.addEventListener("dataavailable", function(e) {
+          if (e.data.size > 0) {
+            if (recordedChunks.length === 0) {
+              var myReader = new FileReader();
+              myReader.onload = function(event) {
+                console.log("header contained here:", myReader.result);
+              };
+              myReader.readAsArrayBuffer(e.data);
+            }
+            recordedChunks.push(e.data);
+            // send audio blobs to websocket server
+            socketclient.send(new Blob([e.data]));
+          }
+
+          if (shouldStop === true && stopped === false) {
+            mediaRecorder.stop();
+            socketclient.close();
+            console.log("stopeeeeeedddd");
+            stopped = true;
+          }
+        });
+
+        mediaRecorder.addEventListener("stop", function() {
+          // on stop clicked, recording will stop, websocket disconnected,
+          // and a webm file of recorded audio will be downloaded
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(new Blob(recordedChunks));
+          console.log(link.href);
+          link.download = "abc.webm";
+          link.click();
+        });
+
+        // upload microphone chunks to websocket every 3000 milliseconds
+        mediaRecorder.start(3000);
+      };
+
+      navigator.mediaDevices
+        .getUserMedia({ audio: true, video: false })
+        .then(handleSuccess);
+    </script>
+  </body>
+</html>
