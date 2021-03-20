@@ -13,7 +13,7 @@ const bitRate = 32000; // bitRate in kbps
 const throttle = new Throttle(bitRate/8);
 
     res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
+        'Content-Type': 'audio/webm',
         'Grip-Hold': 'stream',
         'Grip-Channel': 'myVlogs',
         'Access-Control-Allow-Methods': 'OPTIONS, HEAD, GET, POST, PUT, DELETE',
